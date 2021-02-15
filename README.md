@@ -19,3 +19,5 @@ MIDI commands are not all implemented but the most important events and control 
 The sample waveforms of each instruments should be placed in the Release folder for the core to load them.
 Please read /SimpleSynthesizer/WaveformTone.cpp for the details of a waveform folder.
 
+There is a waveform data bank in the V0.2 release. You can use these data to debug and try SimpleSynthesizer. Please download the release and unpack the Waveform folder to your Release folder inside the solution folder.
+
