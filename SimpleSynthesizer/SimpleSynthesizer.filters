@@ -1,0 +1,66 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="头文件">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="资源文件">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="源文件\EffectsProcessor">
+      <UniqueIdentifier>{4b35cee9-d2b9-457c-a634-d0d580c46cf8}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="MidiFile.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="MidiPlayback.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Tone.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="WaveformTone.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="chorus.cpp">
+      <Filter>源文件\EffectsProcessor</Filter>
+    </ClCompile>
+    <ClCompile Include="echo.cpp">
+      <Filter>源文件\EffectsProcessor</Filter>
+    </ClCompile>
+    <ClCompile Include="reverb.cpp">
+      <Filter>源文件\EffectsProcessor</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="MidiFile.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="MidiPlayback.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Tone.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="WaveformTone.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="chorus.h">
+      <Filter>源文件\EffectsProcessor</Filter>
+    </ClInclude>
+    <ClInclude Include="echo.h">
+      <Filter>源文件\EffectsProcessor</Filter>
+    </ClInclude>
+    <ClInclude Include="reverb.h">
+      <Filter>源文件\EffectsProcessor</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
