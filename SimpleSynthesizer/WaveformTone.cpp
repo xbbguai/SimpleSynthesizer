@@ -32,36 +32,6 @@ std::vector<WaveformTone::WaveformType> WaveformTone::waveForms;
 std::vector<WaveformTone::InstrumentInfo> WaveformTone::instrumentInfos;
 //---------------------------------------
 
-//Structures for reading .wav file
-//Not using structures from windows.h for compatibility with, maybe later, other systems
-#pragma pack(push)
-#pragma pack(2)
-struct RIFFHeader
-{
-	uint32_t id;	//must be "RIFF"
-	uint32_t size;	//size of this structure excluding "id" and "size"
-	uint32_t type;	//must be "WAVE"
-};
-#pragma pack(2)
-struct WaveFormat
-{
-	uint32_t id;	//must be "fmt "
-	uint32_t size;	//size of this structure excluding "id" and "size".
-	uint16_t audioFormat;	//PCM = 1. should be 1. other formats can not be decoded.
-	uint16_t numChannels;	//Should be 2.
-	uint32_t sampleRate;	//Should be 44100
-	uint32_t byteRate;		// = sampleRate * numChannels * bitsPerSample / 8
-	uint16_t blockAlign;	// = numChannels * bitsPerSample / 8
-	uint16_t bitsPerSample;	//Should be 16
-};
-#pragma pack(2)
-struct WaveDataHeader
-{
-	uint32_t id;	//must be "data"
-	uint32_t size;	//size of data 
-};
-#pragma pack(pop)
-//--------------------------------------------End of structure definitions
 
 void WaveformTone::MapGMInstrument(int& instrumentID)
 {
@@ -85,7 +55,7 @@ void WaveformTone::MapGMInstrument(int& instrumentID)
 		12,		//12Marimba                马林巴
 		12,		//13Xylophone              木琴
 		14,		//14 TubularBells          管钟
-		10,		//15Dulcimer               大扬琴
+		46,		//15Dulcimer               大扬琴
 				//
 				//风琴
 		16,		//16 HammondOrgan          击杆风琴
@@ -121,7 +91,7 @@ void WaveformTone::MapGMInstrument(int& instrumentID)
 		40,		//40Violin                 小提琴
 		40,		//41Viola                  中提琴
 		42,		//42Cello                  大提琴
-		40,		//43Contrabass             低音大提琴
+		42,		//43Contrabass             低音大提琴
 		45,		//44 TremoloStrings        弦乐群颤音音色
 		45,		//45 PizzicatoStrings      弦乐群拨弦音色
 		46,		//46 OrchestralHarp        竖琴
@@ -169,12 +139,12 @@ void WaveformTone::MapGMInstrument(int& instrumentID)
 				//合成主音
 		80,		//80 Lead 1(square)合成主音1（方波）
 		81,		//81 Lead 2(sawtooth)合成主音2（锯齿波）
-		80,		//82 Lead 3 (caliopelead)合成主音3
-		80,		//83 Lead 4 (chifflead)合成主音4
+		36,		//82 Lead 3 (caliopelead)合成主音3
+		36,		//83 Lead 4 (chifflead)合成主音4
 		29,		//84 Lead 5(charang)合成主音5
-		80,		//85 Lead 6(voice)合成主音6（人声）
+		52,		//85 Lead 6(voice)合成主音6（人声）
 		80,		//86 Lead 7(fifths)合成主音7（平行五度）
-		80,		//87 Lead 8 (bass + lead)合成主音8（贝司加主音）
+		36,		//87 Lead 8 (bass + lead)合成主音8（贝司加主音）
 				//
 				//合成音色
 		53,		//88 Pad 1 (newage)合成音色1（新世纪）
@@ -482,6 +452,11 @@ void WaveformTone::FreeWaveforms()
 
 bool WaveformTone::TriggerPulse(double& gl, double& gr)
 {
+	if (portamentoEnable)
+	{
+		PortamentoAdjust();	//portamentoEnable will be set to false when done.
+	}
+
 	if (selectedWaveform == -1)
 	{
 		gl = gr = 0;
@@ -522,11 +497,11 @@ bool WaveformTone::TriggerPulse(double& gl, double& gr)
 			{
 //				gl = (1 - (pitch / 127 * 0.6 + 0.2)) * gl;
 //				gr = (pitch / 127 * 0.6 + 0.2) * gr;
-				gl = gr = (gl + gr) / 2;
+//				gl = gr = (gl + gr) / 2;
 			}
 			//Normalize to 60%
-			gl *= 0.6 * GetVelocity() / 127;
-			gr *= 0.6 * GetVelocity() / 127;
+			gl *= 0.6 * GetVelocity() / 127.0;
+			gr *= 0.6 * GetVelocity() / 127.0;
 
 			if (releaseVelocity >= 0 && !GetSustain())
 			{

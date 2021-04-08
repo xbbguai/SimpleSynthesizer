@@ -26,8 +26,9 @@
 
 #define TRACE_PROCESS_TIME true
 #define TRACE_PEAK true
+#define USE_GLOBAL_EFFECT_PROCESSOR true	//If set false, every channel has its independent reverb, chorus and echo processors.
 
-constexpr int MAX_POLYPHONICS = 64;
+constexpr int MAX_POLYPHONICS = 64;	//max polyphonics per channel.
 
 class MidiPlayback
 {
@@ -48,19 +49,21 @@ public:
 		int modulationSpeed{ 64 };
 		int pitchBendDepth{ 2 };
 
+		int lastPitch{ -1 };					//For portamento
+		int portamentoTime{ 0 };
+		bool portamentoEnable{ false };
+
 		int reverbDepth{ 0 };
-		FxReverb reverbProcessor;
 		int chorusDepth{ 0 };
-		FxChorus chorusProcessor;
 		int echoDepth{ 0 };
+
+		int cutOff{ 0 };
+		int resonance{ 0 };
+
+#if (!USE_GLOBAL_EFFECT_PROCESSOR)
+		FxReverb reverbProcessor;
+		FxChorus chorusProcessor;
 		FxEcho echoProcessor;
-
-		int RPNLSB{ 0 };
-		int RPNMSB{ 0 };
-		int NRPNLSB{ 0 };
-		int NRPNMSB{ 0 };
-
-		size_t currentEventIdx{ 0 };
 
 		//Set up chorus params and call UpdateChorus
 		void UpdateChorus()
@@ -79,6 +82,19 @@ public:
 		{
 			echoProcessor.Start(echoDepth);
 		}
+#endif
+
+		int RPNLSB{ 0x7f };
+		int RPNMSB{ 0x7f };
+		int NRPNLSB{ 0x7f };
+		int NRPNMSB{ 0x7f };
+		int dataMSBSave{ 0 };
+
+		int drumPan[128];		//For NRPN to adjust drum panpot. Valid only when percussion bank >= 0
+		int drumReverb[128];	//[Not implemented] For NRPN to adjust drum reverb. Valid only when percussion bank >= 0
+
+		size_t currentEventIdx{ 0 };
+
 
 		void ResetAll()
 		{
@@ -90,10 +106,15 @@ public:
 			modulationDepth = 0;
 			modulationSpeed = 64;
 			pitchBendDepth = 2;
+			lastPitch = -1;
+			portamentoEnable = false;
+			portamentoTime = 0;
 			currentEventIdx = 0;
 			expression = 127;
 			peakReadPos = 6;
 			peakWritePos = 0;
+			cutOff = 0;
+			resonance = 0;
 
 			for (auto& item : pTones)
 			{
@@ -103,26 +124,27 @@ public:
 					item = nullptr;
 				}
 			}
+
+			for (auto& item : drumPan)
+				item = 64;
+			for (auto& item : drumReverb)
+				item = 64;
 		}
 
 		void ResetRPN()
 		{
-			pitchBendDepth = 2;
-			RPNLSB = 0;
-			RPNMSB = 0;
+			RPNLSB = 0x7f;
+			RPNMSB = 0x7f;
+			NRPNMSB = NRPNLSB = 0x7f;
 		}
 
 		void SetRPNMSB(int msb)
 		{
 			RPNMSB = msb;
-			if (RPNMSB == 0x7f && RPNLSB == 0x7f)
-				ResetRPN();
 		}
 		void SetRPNLSB(int lsb)
 		{
 			RPNLSB = lsb;
-			if (RPNMSB == 0x7f && RPNLSB == 0x7f)
-				ResetRPN();
 		}
 		void SetNRPNMSB(int msb)
 		{
@@ -133,14 +155,86 @@ public:
 			NRPNLSB = lsb;
 		}
 
-		void WriteRPNDataMSB(int data)
+		void WriteDataMSB(int data)
 		{
-			if (RPNLSB == 0 && RPNMSB == 0)	//Change pitch bend depth
-				pitchBendDepth = data;
+			dataMSBSave = data;
+			if (RPNLSB != 0x7f && RPNMSB != 0x7f)
+			{
+				//So, its RPN
+				if (RPNLSB == 0 && RPNMSB == 0)	//Pitch bend sensitivity
+				{
+					pitchBendDepth = data;
+				}
+				else if (RPNLSB == 1 && RPNMSB == 0)	//Fine tuning
+				{
+				}
+				else if (RPNLSB == 2 && RPNMSB == 0)	//Coarse tuning
+				{
+				}
+				else if (RPNLSB == 3 && RPNMSB == 0)	//Tuning program select
+				{
+				}
+				else if (RPNLSB == 4 && RPNMSB == 0)	//Tuning banck select
+				{
+				}
+				//Done. Reset LSB and MSB and prevent useless msb written.
+				RPNLSB = RPNMSB = 0x7f;
+			}
+			else if (NRPNLSB != 0x7f && NRPNMSB != 0x7f)
+			{
+				//So, its NRPN
+//				NRPNMSB = NRPNLSB = 0x7f;
+			}
 		}
 
-		void WriteRPNDataLSB(int data)
+		void WriteDataLSB(int data)
 		{
+			if (NRPNLSB != 0x7f && NRPNMSB != 0x7f)
+			{
+				//XG doesn't use NRPN?
+				//GS uses NRPN.
+				switch (NRPNMSB)
+				{
+				case 1:
+					switch (NRPNLSB)
+					{
+					case 8:	//vibrato rate
+						break;
+					case 9: //vibrato depth
+						break;
+					case 10: //vibrato delay
+						break;
+					case 32:	//filter cutoff frequency
+						cutOff = (dataMSBSave << 7) + data;
+						break;
+					case 33:	//filter resonance
+						resonance = (dataMSBSave << 7) + data;
+						break;
+					case 99:	//EG Attack time
+						break;
+					case 100:	//EG delay time
+						break;
+					case 102:	//EG release time
+						break;
+					}
+					break;
+				case 0x18:	//Drum instrument pitch coarse
+					break;
+				case 0x1a:	//Drum instrument TVA level
+					break;
+				case 0x1c:	//Drum instrument panpot
+					drumPan[NRPNLSB] = data;
+					break;
+				case 0x1d:	//Drum instrument reverb send level
+					drumReverb[NRPNLSB] = data;
+					break;
+				case 0x1e:	//Drum chorus send level
+					break;
+				case 0x1f:	//Drum instrument delay (variation) send level
+					break;
+				}
+				NRPNMSB = NRPNLSB = 0x7f;
+			}
 		}
 
 		Tone* pTones[MAX_POLYPHONICS]{};
@@ -211,9 +305,22 @@ public:
 		peakReadPos = (peakReadPos + 1) % 10;
 	}
 #endif
+
+	//Global effect processors
+#if (USE_GLOBAL_EFFECT_PROCESSOR)
+	FxChorus chorusProcessor{ true };
+	FxEcho echoProcessor{ true };
+	FxReverb reverbProcessor{ true };
+#endif
+
 public:
 	MidiPlayback()
 	{
+#if (USE_GLOBAL_EFFECT_PROCESSOR)
+		chorusProcessor.Start(127);
+		echoProcessor.Start(127);
+		reverbProcessor.Start(127);
+#endif
 	}
 
 	~MidiPlayback();

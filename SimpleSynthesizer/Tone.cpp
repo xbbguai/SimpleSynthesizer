@@ -25,6 +25,7 @@
 #include "Tone.h"
 #include "WaveformTone.h"
 
+
 //Static
 Tone* Tone::CreateTone(int bank, int GMInstrument, const double _pitch, const uint8_t _velocity /*= 127*/)
 {
@@ -60,7 +61,7 @@ bool GM001_GrandPiano::Envelope(double& g)
 	{
 		int durationTickBase;
 		//Higher pitch has a shorter duration.
-		durationTickBase = std::max(5, static_cast<int>(pitch / 10 / 12.f * 40 + 5));
+		durationTickBase = (std::max)(5, static_cast<int>(pitch / 10 / 12.f * 40 + 5));
 
 		size_t startPos = static_cast<size_t>(static_cast<double>(evlpSampleCount) / SAMPLE_RATE * durationTickBase);
 		if (startPos >= std::size(envelopeData) - 1)
@@ -155,16 +156,22 @@ bool GM001_GrandPiano::TriggerPulse(double& gl, double& gr)
 
 bool GM080_Square::TriggerPulse(double& gl, double& gr)
 {
+	if (portamentoEnable)
+	{
+		PortamentoAdjust();	//portamentoEnable will be set to false when done.
+	}
+
 	double t = toneSampleCount / SAMPLE_RATE;
 	toneSampleCount++;
 
 	//Base only
 	double fractionPart = frequency * t - static_cast<long long>(frequency * t);
-	double g = (fractionPart > 0.5 ? 1 - fractionPart : fractionPart) * 16 - 4;
+	double g = (fractionPart > 0.5 ? 1 - fractionPart : fractionPart) * 64 - 16;
 	if (g > 1)
 		g = 1;
 	if (g < -1)
 		g = -1;
+
 	//Attack
 	if (releaseVelocity == -1)
 	{
@@ -174,6 +181,12 @@ bool GM080_Square::TriggerPulse(double& gl, double& gr)
 			g *= static_cast<double>(evlpSampleCount) / 50;
 		}
 	}
+
+	//Resonance
+	g = bandPassFilter.TriggerPulse(g) * 2 + g;
+	//Cutoff
+	g = lowPassFilter.TriggerPulse(g);
+
 	//Then normalize to 20% of maximum volume
 	g *= 32767 * 0.2;
 	//Velocity
@@ -200,12 +213,22 @@ bool GM080_Square::TriggerPulse(double& gl, double& gr)
 
 bool GM081_Triangle::TriggerPulse(double& gl, double& gr)
 {
+	if (portamentoEnable)
+	{
+		PortamentoAdjust();	//portamentoEnable will be set to false when done.
+	}
+
 	double t = toneSampleCount / SAMPLE_RATE;
 	toneSampleCount++;
 
 	//Base only
 	double fractionPart = frequency * t - static_cast<long long>(frequency * t);
-	double g = (fractionPart > 0.5 ? 1 - fractionPart : fractionPart) * 4 - 1;
+//	double g = (fractionPart > 0.5 ? 1 - fractionPart : fractionPart) * 4 - 1;
+	double g = (fractionPart > 0.2 ? (1 - fractionPart) * 5 / 8 : fractionPart * 2.5) * 4 - 1;
+	//Resonance
+	g = bandPassFilter.TriggerPulse(g) * 2 + g;
+	//Cutoff
+	g = lowPassFilter.TriggerPulse(g);
 	//Then normalize to 50% of maximum volume
 	g *= 32767 * 0.5;
 	//Velocity

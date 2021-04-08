@@ -46,8 +46,9 @@ class FxEcho
 	size_t pos;
 
 	bool isEnabled{ false };
+	bool wetOnly{ false };
 public:
-	FxEcho();
+	FxEcho(bool _wetOnly = false);
 	~FxEcho();
 
 	void Start(int depth);

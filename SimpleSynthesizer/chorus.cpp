@@ -18,8 +18,9 @@
 */
 #include "chorus.h"
 
-FxChorus::FxChorus()
+FxChorus::FxChorus(bool _wetOnly)
 {
+	wetOnly = _wetOnly;
 	chorus[0] = { 35, 0.5, 0, 0, 10, 0.5, 0 };
 	chorus[1] = { 25, 0.5, 32, 0, 20, 0.5, 0 };
 	chorus[2] = { 45, 0.5, 64, 0, 10, 0.5, 0 };
@@ -68,16 +69,21 @@ void FxChorus::TriggerPulse(const double inLeft, const double inRight, double& o
 {
 	if (!isEnabled)
 	{
-		outLeft = inLeft;
-		outRight = inRight;
+		if (wetOnly)
+			outLeft = outRight = 0;
+		else
+		{
+			outLeft = inLeft;
+			outRight = inRight;
+		}
 		return;
 	}
 
 	bufferLeft[pos] = inLeft;
 	bufferRight[pos] = inRight;
 
-	double oL = inLeft;
-	double oR = inRight;
+	double oL = 0;
+	double oR = 0;
 
 	for (int i = 0; i < numChorus; i++)
 	{
@@ -94,6 +100,6 @@ void FxChorus::TriggerPulse(const double inLeft, const double inRight, double& o
 
 	pos = (pos + 1) % bufferSize;
 
-	outLeft = oL;
-	outRight = oR;
+	outLeft = oL + (wetOnly ? 0 : inLeft);
+	outRight = oR + (wetOnly ? 0 : inRight);
 }

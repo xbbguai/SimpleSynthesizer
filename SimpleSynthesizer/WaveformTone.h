@@ -20,6 +20,37 @@
 
 #pragma once
 
+//Structures for reading .wav file
+//Not using structures from Windows for compatibility with, maybe later, other systems
+#pragma pack(push)
+#pragma pack(2)
+struct RIFFHeader
+{
+    uint32_t id;	//must be "RIFF"
+    uint32_t size;	//size of the rest of the file excluding "id" and "size" of this structure.
+    uint32_t type;	//must be "WAVE"
+};
+#pragma pack(2)
+struct WaveFormat
+{
+    uint32_t id;	//must be "fmt "
+    uint32_t size;	//size of this structure excluding "id" and "size".
+    uint16_t audioFormat;	//PCM = 1. should be 1. other formats can not be decoded.
+    uint16_t numChannels;	//Should be 2.
+    uint32_t sampleRate;	//Should be 44100
+    uint32_t byteRate;		// = sampleRate * numChannels * bitsPerSample / 8
+    uint16_t blockAlign;	// = numChannels * bitsPerSample / 8
+    uint16_t bitsPerSample;	//Should be 16
+};
+#pragma pack(2)
+struct WaveDataHeader
+{
+    uint32_t id;	//must be "data"
+    uint32_t size;	//size of data 
+};
+#pragma pack(pop)
+//--------------------------------------------End of structure definitions
+
 class WaveformTone : public Tone
 {
 public:
@@ -114,5 +145,4 @@ public:
         Tone::operator = (copy);
         return *this;
     }
-
 };

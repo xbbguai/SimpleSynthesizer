@@ -28,7 +28,9 @@ constexpr double pi2 = pi * 2;
 
 constexpr double MAX_MODULATION_FREQ = 10;
 constexpr double MAX_MODULATION_PITCH = 1;
+constexpr double PORTAMENTO_SPEED_CONST = 5;
 
+#include "Filters.h"
 class Tone
 {
 protected:
@@ -49,13 +51,20 @@ protected:
     int releaseVelocity;    //64 = Neutral, 127 = hardest, 0 = softest
     bool sustain;           //Sustain until the note fade out without considering duration.
     bool sustainFlipped;    //Sustain status can change from true to false for only once.
-    bool soft;              //Volume decrease 50%
+    bool soft;              //Volume decrease by 50%
     bool autoStereo;        //[Deleted] Generate stereo signal in accordance with the piano keyboard arrangement -- bass on the left, treble on the right.
+    double portamentoStep;  //How many pitch (in double) should change per pulse during portamento. 
+    double portamentoPitchDiff; //The pitch difference between portamento target pitch and start pitch.
+    bool portamentoEnable;  //Set true when should do portamento. Will be set false when done.
+
+    //Filters
+    LowPassFilter_1Order lowPassFilter; 
+    BandPassFilter bandPassFilter;      //For resonance.
 
     //Calculate fundamental frequency with pitch, pitch bend and modulation bend value.
     virtual void SetFrequency()
     {
-        frequency = 440 * pow(2, ((pitch + pitchBend + modulationBend - 69) / 12));
+        frequency = 440 * pow(2, ((pitch + pitchBend + modulationBend + portamentoPitchDiff - 69) / 12));
     }
     virtual void ReCalibrateFrequency()
     {
@@ -66,12 +75,30 @@ protected:
         double len = pi2 * frequencySave * t;
         toneSampleCount = len / pi2 / frequency * SAMPLE_RATE;
     }
+    virtual void PortamentoAdjust()
+    {
+        //portamentoEnable will be set to false when done.
+        if (std::fabs(portamentoPitchDiff) <= std::fabs(portamentoStep))
+        {
+            portamentoPitchDiff = 0;
+            portamentoEnable = false;
+        }
+        else
+            portamentoPitchDiff += portamentoStep;
+        ReCalibrateFrequency();
+    }
 public:
     double GetPitch() const { return pitch; }
     virtual void SetPitch(const double _pitch) 
     {
         pitch = _pitch; 
         SetFrequency();
+    }
+    virtual void SetPortamentoPitch(const int fromPitch, const int portamentoTime)
+    {
+        portamentoPitchDiff = fromPitch - pitch;
+        portamentoStep = (portamentoPitchDiff < 0 ? PORTAMENTO_SPEED_CONST : -PORTAMENTO_SPEED_CONST) / (SAMPLE_RATE * 0.2 * portamentoTime / 127 + 1); //
+        portamentoEnable = (portamentoPitchDiff != 0);
     }
 
     uint8_t GetVelocity() const { return velocity; }
@@ -130,7 +157,9 @@ public:
              modulationSpeed{ 0 },
              modulationBend{ 0 },
              modulationPitchChangePerSample{ 0 },
-             modulationDirection{ 1 }
+             modulationDirection{ 1 },
+             portamentoEnable{ false },
+             portamentoPitchDiff{ 0 }
     {
         SetPitch(69);
     }
@@ -153,6 +182,8 @@ public:
         modulationBend = copy.modulationBend;
         modulationPitchChangePerSample = copy.modulationPitchChangePerSample;
         modulationDirection = copy.modulationDirection;
+        portamentoEnable = copy.portamentoEnable;
+        portamentoPitchDiff = copy.portamentoPitchDiff;
     }
 
     Tone& operator = (const Tone& copy)
@@ -173,6 +204,8 @@ public:
         modulationBend = copy.modulationBend;
         modulationPitchChangePerSample = copy.modulationPitchChangePerSample;
         modulationDirection = copy.modulationDirection;
+        portamentoEnable = copy.portamentoEnable;
+        portamentoPitchDiff = copy.portamentoPitchDiff;
         return *this;
     }
 
@@ -192,6 +225,8 @@ public:
         modulationBend = 0;
         modulationPitchChangePerSample = 0;
         modulationDirection = 1;
+        portamentoEnable = false;
+        portamentoPitchDiff = 0;
         //SetPitch should be called after pitchBend being initialized.
         SetPitch(_pitch);
     }
@@ -206,12 +241,27 @@ public:
         evlpSampleCount = releaseVelocity;
     }
 
+    bool IsReleasing()
+    {
+        return releaseVelocity > 0;
+    }
+
     virtual void PitchBend(int value, int depth)
     {
         //The pitch bend wheel value from midi is from 0 to 16383(-8192 to 8191), which means +- one whole tone.
         //The pitchBend value stores -depth to depth, pitch changes one tone every 2 depth value.
         pitchBend = (static_cast<double>(value) - 8192) / 8192 * depth;
         ReCalibrateFrequency();
+    }
+
+    virtual void SetFilterCutoffFreq(double freq)
+    {
+        lowPassFilter.UpdateParam(freq, SAMPLE_RATE);
+    }
+
+    virtual void SetResonanceFreq(double freq)
+    {
+        bandPassFilter.UpdateParam(freq, 200, 1, SAMPLE_RATE);
     }
 
     static Tone* CreateTone(int bank, int GMInstrument, const double _pitch, const uint8_t _velocity = 127);

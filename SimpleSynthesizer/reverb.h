@@ -159,15 +159,15 @@ class FxReverb
 
     bool isEnabled{ false };
 public:
-    FxReverb()
+    FxReverb(bool _wetOnly = false)
     {
         reverberance = 60;   //0-100
-        hf_damping = 50;     //0-100
+        hf_damping = 80;     //0-100
         stereo_depth = 100;  //0-100
-        room_scale = 100;    //0-100
+        room_scale = 60;    //0-100
         wet_gain_dB = 0;     //-10 - 10
-        pre_delay_ms = 5;
-        wet_only = false;
+        pre_delay_ms = 15;
+        wet_only = _wetOnly;
     }
 
     void Start(int depth);

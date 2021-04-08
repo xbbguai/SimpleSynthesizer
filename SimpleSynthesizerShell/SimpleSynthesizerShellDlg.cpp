@@ -10,6 +10,7 @@
 #pragma comment(lib, "winmm.lib")
 #include <mmsystem.h>
 #include "thread.h"
+#include "..\SimpleSynthesizer\WaveformTone.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -20,7 +21,7 @@
 //
 
 //Playback buffer
-constexpr int BUFFER_SIZE = (int)SAMPLE_RATE * 2;
+constexpr int BUFFER_SIZE = (int)SAMPLE_RATE;
 constexpr int BUFFER_COUNT = 2;
 char buffers[BUFFER_COUNT][BUFFER_SIZE];
 
@@ -114,10 +115,12 @@ UINT PlaybackThread::Worker(LPVOID pParam)
 			waveOutPrepareHeader(hWaveOut, pWaveHeader, sizeof(WAVEHDR));
 			waveOutWrite(hWaveOut, pWaveHeader, sizeof(WAVEHDR));
 		}
+		else
+			Sleep(5);
 	}
 
 	if (!SenseAsynExit())
-		Sleep(1000);
+		Sleep(500);
 
 	waveOutClose(hWaveOut);
 	return 0;
@@ -182,6 +185,7 @@ BEGIN_MESSAGE_MAP(CSimpleSynthesizerShellDlg, CDialogEx)
 	ON_WM_TIMER()
 	ON_WM_DESTROY()
 	ON_BN_CLICKED(IDC_BTNABOUT, &CSimpleSynthesizerShellDlg::OnBnClickedBtnabout)
+	ON_BN_CLICKED(IDC_BTNEXPORT, &CSimpleSynthesizerShellDlg::OnBnClickedBtnexport)
 END_MESSAGE_MAP()
 
 
@@ -307,13 +311,16 @@ void CSimpleSynthesizerShellDlg::OnBnClickedBtnload()
 		{
 			BeginWaitCursor();
 			mpb.LoadMidiFile(fileName);
+
 			SetWindowText(L"SimpleSynthesizer Shell - " + fdlg.GetFileName());
 			GetDlgItem(IDC_BTNPLAY)->EnableWindow(TRUE);
+			GetDlgItem(IDC_BTNEXPORT)->EnableWindow(TRUE);
 			EndWaitCursor();
 		}
 		catch (...)
 		{
 			GetDlgItem(IDC_BTNPLAY)->EnableWindow(FALSE);
+			GetDlgItem(IDC_BTNEXPORT)->EnableWindow(FALSE);
 			MessageBox(L"Not a MIDI file or file does not exist.", L"Error");
 		}
 	}
@@ -338,6 +345,7 @@ void CSimpleSynthesizerShellDlg::OnBnClickedBtnplay()
 		KillTimer(0);
 		GetDlgItem(IDC_BTNPLAY)->SetWindowText(L"Play");
 		GetDlgItem(IDC_BTNLOAD)->EnableWindow(TRUE);
+		GetDlgItem(IDC_BTNEXPORT)->EnableWindow(TRUE);
 		SetDlgItemText(IDC_CPUUSAGE, L"0.0%");
 
 		for (int i = 0; i < MAX_MIDI_CHANNELS; i++)
@@ -364,6 +372,7 @@ void CSimpleSynthesizerShellDlg::OnBnClickedBtnplay()
 		pbt.Start();
 		SetTimer(0, 100, NULL);
 		GetDlgItem(IDC_BTNLOAD)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BTNEXPORT)->EnableWindow(FALSE);
 	}
 }
 
@@ -412,7 +421,7 @@ void CSimpleSynthesizerShellDlg::OnTimer(UINT_PTR nIDEvent)
 				{
 					SetDlgItemInt(IDC_00 + i * 10, channel.volume);
 					SetDlgItemInt(IDC_01 + i * 10, channel.pan);
-					SetDlgItemInt(IDC_02 + i * 10, channel.instrumentBank);
+					SetDlgItemInt(IDC_02 + i * 10, channel.percussionBank >= 0 ? channel.percussionBank + 512 :  channel.instrumentBank);
 					SetDlgItemInt(IDC_03 + i * 10, channel.instrumentID);
 					SetDlgItemInt(IDC_04 + i * 10, channel.expression);
 					SetDlgItemInt(IDC_05 + i * 10, channel.reverbDepth);
@@ -426,6 +435,7 @@ void CSimpleSynthesizerShellDlg::OnTimer(UINT_PTR nIDEvent)
 	{
 		GetDlgItem(IDC_BTNPLAY)->SetWindowText(L"Play");
 		GetDlgItem(IDC_BTNLOAD)->EnableWindow(TRUE);
+		GetDlgItem(IDC_BTNEXPORT)->EnableWindow(TRUE);
 		strCPU = L"0.0%";
 		for (int i = 0; i < MAX_MIDI_CHANNELS; i++)
 		{
@@ -453,5 +463,71 @@ void CSimpleSynthesizerShellDlg::OnDestroy()
 void CSimpleSynthesizerShellDlg::OnBnClickedBtnabout()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	MessageBox(L"A GUI Shell for SimpleSythesizer V0.2\r\nCopyright (C) 2021 Feng Dai\r\nSimpleSynthesizer is an experimental waveform synthesizer core.\r\nReleased under GPL 3.0", L"About");
+	MessageBox(L"A GUI Shell for SimpleSythesizer V0.21\r\nCopyright (C) 2021 Feng Dai\r\nSimpleSynthesizer is an experimental waveform synthesizer core.\r\nReleased under GPL 3.0", L"About");
+}
+
+
+void CSimpleSynthesizerShellDlg::OnBnClickedBtnexport()
+{
+	// TODO: 
+	RIFFHeader riffHeader;
+	WaveFormat format;
+	WaveDataHeader dataHeader;
+
+	riffHeader.id = 0x46464952;
+	riffHeader.type = 0x45564157;
+
+	format.id = 0x20746d66;
+	format.size = sizeof(WaveFormat) - sizeof(format.id) - sizeof(format.size);
+	format.audioFormat = 1;
+	format.bitsPerSample = 16;
+	format.blockAlign = 4;
+	format.byteRate = static_cast<uint32_t>(SAMPLE_RATE) * 2 * 2;
+	format.numChannels = 2;
+	format.sampleRate = SAMPLE_RATE;
+
+	dataHeader.id = 0x61746164;
+	dataHeader.size = 0;
+
+	CFileDialog fdlg(FALSE, L"WAVE File(*.wav)|*.wav", NULL,
+		OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
+		L"WAVE File(*.wav)|*.wav", this);
+	if (fdlg.DoModal() == IDOK)
+	{
+		CFile file;
+		if (file.Open(fdlg.GetPathName(), CFile::OpenFlags::modeCreate | CFile::OpenFlags::modeWrite))
+		{
+			char buffer[1024];
+			mpb.Rewind();
+			BeginWaitCursor();
+
+			//Write headers
+			file.Write(&riffHeader, sizeof(RIFFHeader));
+			file.Write(&format, sizeof(WaveFormat));
+			file.Write(&dataHeader, sizeof(WaveDataHeader));
+
+			while (mpb.PrepareBuffer(buffer, 1024))
+			{
+				file.Write(buffer, 1024);
+				dataHeader.size += 1024;
+			}
+			file.Write(buffer, 1024);
+			dataHeader.size += 1024;
+
+			file.Flush();
+
+			riffHeader.size = sizeof(riffHeader.type) + sizeof(WaveFormat) + sizeof(WaveDataHeader) + dataHeader.size;
+
+			file.Seek(0, CFile::begin);
+			//Write headers, again.
+			file.Write(&riffHeader, sizeof(RIFFHeader));
+			file.Write(&format, sizeof(WaveFormat));
+			file.Write(&dataHeader, sizeof(WaveDataHeader));
+
+			file.Close();
+			EndWaitCursor();
+		}
+		else
+			MessageBox(L"Unable to create file " + file.GetFileName());
+	}
 }

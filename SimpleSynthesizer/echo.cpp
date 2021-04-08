@@ -18,17 +18,19 @@
 */
 #include "echo.h"
 
-FxEcho::FxEcho()
+FxEcho::FxEcho(bool _wetOnly)
 {
-	echoes[0].delay = 300;
-	echoes[0].decay = 0.4;
+	echoes[0].delay = 350;
+	echoes[0].decay = 0.5;
 	echoes[0].pan = 64;
-	echoes[1].delay = 600;
-	echoes[1].decay = 0.2;
+	echoes[1].delay = 700;
+	echoes[1].decay = 0.3;
 	echoes[1].pan = 64;
-	echoes[2].delay = 900;
-	echoes[2].decay = 0.1;
+	echoes[2].delay = 1050;
+	echoes[2].decay = 0.15;
 	echoes[2].pan = 64;
+
+	wetOnly = _wetOnly;
 }
 
 FxEcho::~FxEcho()
@@ -66,25 +68,34 @@ void FxEcho::Start(int depth)
 	}
 
 	//For the time being.
-	echoes[0].delay = depth * 4;
+	echoes[0].decay = depth / 127.0 * 0.5;
+	echoes[1].decay = depth / 127.0 * 0.2;
+	echoes[2].decay = depth / 127.0 * 0.1;
+/*	echoes[0].delay = depth * 4;
 	echoes[1].delay = depth * 8;
 	echoes[2].delay = depth * 16;
+*/
 }
 
 void FxEcho::TriggerPulse(const double inLeft, const double inRight, double& outLeft, double& outRight)
 {
 	if (!isEnabled)
 	{
-		outLeft = inLeft;
-		outRight = inRight;
+		if (wetOnly)
+			outLeft = outRight = 0;
+		else
+		{
+			outLeft = inLeft;
+			outRight = inRight;
+		}
 		return;
 	}
 
 	bufferLeft[pos] = inLeft;
 	bufferRight[pos] = inRight;
 
-	double l = inLeft;
-	double r = inRight;
+	double l = 0;
+	double r = 0;
 
 	for (auto& item : echoes)
 	{
@@ -93,8 +104,8 @@ void FxEcho::TriggerPulse(const double inLeft, const double inRight, double& out
 		r += bufferRight[echoPos] * item.decay;
 	}
 
-	outLeft = l;
-	outRight = r;
+	outLeft = l + (wetOnly ? 0 : inLeft);
+	outRight = r + (wetOnly ? 0 : inRight);
 
 	pos = (pos + 1) % EchoBufferSize;
 }

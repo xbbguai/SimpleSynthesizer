@@ -149,6 +149,7 @@
   <ItemGroup>
     <ClCompile Include="chorus.cpp" />
     <ClCompile Include="echo.cpp" />
+    <ClCompile Include="Filters.cpp" />
     <ClCompile Include="MidiPlayback.cpp" />
     <ClCompile Include="reverb.cpp" />
     <ClCompile Include="Tone.cpp" />
@@ -158,6 +159,7 @@
   <ItemGroup>
     <ClInclude Include="chorus.h" />
     <ClInclude Include="echo.h" />
+    <ClInclude Include="Filters.h" />
     <ClInclude Include="MidiFile.h" />
     <ClInclude Include="MidiPlayback.h" />
     <ClInclude Include="reverb.h" />

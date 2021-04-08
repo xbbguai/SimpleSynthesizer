@@ -159,6 +159,7 @@
 #define IDC_MASTERVOL                   1261
 #define IDC_BTNABOUT                    1262
 #define IDC_SLIDER1                     1263
+#define IDC_BTNEXPORT                   1263
 
 // Next default values for new objects
 // 

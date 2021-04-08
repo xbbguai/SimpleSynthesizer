@@ -43,4 +43,5 @@ public:
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	afx_msg void OnDestroy();
 	afx_msg void OnBnClickedBtnabout();
+	afx_msg void OnBnClickedBtnexport();
 };

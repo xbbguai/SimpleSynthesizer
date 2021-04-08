@@ -48,8 +48,9 @@ class FxChorus
 	int pos{ 0 };
 
 	bool isEnabled{ false };
+	bool wetOnly{ false };
 public:
-	FxChorus();
+	FxChorus(bool _wetOnly = false);
 	~FxChorus();
 
 	void Start(int depth);
