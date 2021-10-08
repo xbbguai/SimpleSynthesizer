@@ -1,5 +1,5 @@
 # SimpleSynthesizer
-An experimenting synthesizer.
+An experimental synthesizer.
 
 This is a waveform synthesizer.
 The core synthesizer codes are in SimpleSynthesizer folder. 
